@@ -369,215 +369,223 @@ macro_rules! __internal_array_struct {
         #[cfg( $($use_std)* )]
         $crate::__internal_array_struct!(@impl_std struct $name { $($field),* } );
 
-        impl<T> $name<T> {
-            /// The number of items [`
-            #[doc=stringify!($name)]
-            /// `] has.
-            pub const LEN: usize = $crate::__internal_array_struct!(@ident_count $($field)*);
+        const _: () = {
+            use ::core::ops::FnMut;
+            use ::core::convert::From;
+            use ::core::option::Option;
 
-            /// The [`
-            #[doc=stringify!($name)]
-            /// `]'s field names.
-            pub const NAMES: [&'static str; <$name<()>>::LEN] = [ $( stringify!($field) ),* ];
+            impl<T> $name<T> {
+                /// The number of items [`
+                #[doc=stringify!($name)]
+                /// `] has.
+                pub const LEN: usize = $crate::__internal_array_struct!(@ident_count $($field)*);
 
-            /// The number of items [`
-            #[doc=stringify!($name)]
-            /// `] has.
-            #[allow(clippy::len_without_is_empty)]
-            #[inline(always)]
-            pub const fn len(&self) -> usize {
-                Self::LEN
-            }
+                /// The [`
+                #[doc=stringify!($name)]
+                /// `]'s field names.
+                pub const NAMES: [&'static str; <$name<()>>::LEN] = [ $( stringify!($field) ),* ];
 
-            /// Initializes [`
-            #[doc=stringify!($name)]
-            /// `], where each field's value is the returned value from `f`.
-            ///
-            /// `f` receives the field's name and index.
-            #[inline(always)]
-            pub fn from_fn(mut f: impl ::core::ops::FnMut(&'static str, usize) -> T) -> Self {
-                $crate::__internal_array_struct!(@from_fn_impl (f) $($field)*)
-            }
-
-            /// Converts from
-            #[doc=concat!("`&", stringify!($name), "<T>`")]
-            /// to
-            #[doc=concat!("`", stringify!($name), "<&T>`.")]
-            #[inline(always)]
-            pub const fn as_ref(&self) -> $name<&T> {
-                $name {
-                    $(
-                        $field: &self.$field
-                    ),*
+                /// The number of items [`
+                #[doc=stringify!($name)]
+                /// `] has.
+                #[allow(clippy::len_without_is_empty)]
+                #[inline(always)]
+                pub const fn len(&self) -> usize {
+                    Self::LEN
                 }
-            }
 
-            /// Converts from
-            #[doc=concat!("`&mut ", stringify!($name), "<T>`")]
-            /// to
-            #[doc=concat!("`", stringify!($name), "<&mut T>`.")]
-            #[inline(always)]
-            pub const fn as_mut(&mut self) -> $name<&mut T> {
-                $name {
-                    $(
-                        $field: &mut self.$field
-                    ),*
+                /// Initializes [`
+                #[doc=stringify!($name)]
+                /// `], where each field's value is the returned value from `f`.
+                ///
+                /// `f` receives the field's name and index.
+                #[inline(always)]
+                pub fn from_fn(mut f: impl FnMut(&'static str, usize) -> T) -> Self {
+                    $crate::__internal_array_struct!(@from_fn_impl (f) $($field)*)
                 }
-            }
 
-            /// Turns each field into a tuple of this field's name and value.
-            #[inline(always)]
-            pub fn with_names(self) -> $name<(&'static str, T)>
-            {
-                $name {
-                    $(
-                        $field: (stringify!($field), self.$field)
-                    ),*
+                /// Converts from
+                #[doc=concat!("`&", stringify!($name), "<T>`")]
+                /// to
+                #[doc=concat!("`", stringify!($name), "<&T>`.")]
+                #[inline(always)]
+                pub const fn as_ref(&self) -> $name<&T> {
+                    $name {
+                        $(
+                            $field: &self.$field
+                        ),*
+                    }
                 }
-            }
 
-            /// Transforms each field using `f`.
-            #[inline(always)]
-            pub fn map<U>(self, mut f: impl ::core::ops::FnMut(T) -> U) -> $name<U> {
-                $name {
+                /// Converts from
+                #[doc=concat!("`&mut ", stringify!($name), "<T>`")]
+                /// to
+                #[doc=concat!("`", stringify!($name), "<&mut T>`.")]
+                #[inline(always)]
+                pub const fn as_mut(&mut self) -> $name<&mut T> {
+                    $name {
+                        $(
+                            $field: &mut self.$field
+                        ),*
+                    }
+                }
+
+                /// Turns each field into a tuple of this field's name and value.
+                #[inline(always)]
+                pub fn with_names(self) -> $name<(&'static str, T)>
+                {
+                    $name {
+                        $(
+                            $field: (stringify!($field), self.$field)
+                        ),*
+                    }
+                }
+
+                /// Transforms each field using `f`.
+                #[inline(always)]
+                pub fn map<U>(self, mut f: impl FnMut(T) -> U) -> $name<U> {
+                    $name {
+                        $(
+                            $field: f(self.$field),
+                        )*
+                    }
+                }
+
+                /// Calls the function `f` on each field in order.
+                #[inline(always)]
+                pub fn for_each(self, mut f: impl FnMut(T)) {
                     $(
-                        $field: f(self.$field),
+                        f(self.$field);
                     )*
                 }
-            }
 
-            /// Calls the function `f` on each field in order.
-            #[inline(always)]
-            pub fn for_each(self, mut f: impl ::core::ops::FnMut(T)) {
-                $(
-                    f(self.$field);
-                )*
-            }
+                /// Folds every element into an accumulator by applying an operation, returning the final result.
+                ///
+                /// `fold()` takes two arguments: an initial value, and a closure with two arguments: an ‘accumulator’,
+                /// and an element. The closure returns the value that the accumulator should have for the next iteration.
+                ///
+                /// The initial value is the value the accumulator will have on the first call.
+                ///
+                /// After applying this closure to every element, `fold()` returns the accumulator.
+                #[inline(always)]
+                pub fn fold<B>(self, init: B, mut f: impl FnMut(B, T) -> B) -> B {
+                    let mut state = init;
 
-            /// Folds every element into an accumulator by applying an operation, returning the final result.
-            ///
-            /// `fold()` takes two arguments: an initial value, and a closure with two arguments: an ‘accumulator’,
-            /// and an element. The closure returns the value that the accumulator should have for the next iteration.
-            ///
-            /// The initial value is the value the accumulator will have on the first call.
-            ///
-            /// After applying this closure to every element, `fold()` returns the accumulator.
-            #[inline(always)]
-            pub fn fold<B>(self, init: B, mut f: impl ::core::ops::FnMut(B, T) -> B) -> B {
-                let mut state = init;
-
-                $(
-                    state = f(state, self.$field);
-                )*
-
-                state
-            }
-
-            $crate::__internal_array_struct!(@reduce $($field)*);
-
-            /// Zips together the fields of two [`
-            #[doc=stringify!($name)]
-            /// `].
-            #[inline(always)]
-            pub fn zip<U>(self, other: $name<U>) -> $name<(T, U)> {
-                $name {
                     $(
-                        $field: (self.$field, other.$field)
-                    ),*
+                        state = f(state, self.$field);
+                    )*
+
+                    state
+                }
+
+                $crate::__internal_array_struct!(@reduce $($field)*);
+
+                /// Zips together the fields of two [`
+                #[doc=stringify!($name)]
+                /// `].
+                #[inline(always)]
+                pub fn zip<U>(self, other: $name<U>) -> $name<(T, U)> {
+                    $name {
+                        $(
+                            $field: (self.$field, other.$field)
+                        ),*
+                    }
+                }
+
+                /// Tests if every element matches a predicate.
+                ///
+                /// `all()` takes a closure that returns `true` or `false`.
+                /// It applies this closure to each element, and if they all return `true`,
+                /// then so does `all()`. If any of them return `false`, it returns `false`.
+                ///
+                /// `all()` is short-circuiting; in other words, it will stop processing as
+                /// soon as it finds a `false`, given that no matter what else happens,
+                /// the result will also be `false`.
+                #[inline(always)]
+                pub fn all(self, mut f: impl FnMut(T) -> bool) -> bool {
+                    $(
+                        f(self.$field)
+                    )&&*
+                }
+
+                /// Tests if any element matches a predicate.
+                ///
+                /// `any()` takes a closure that returns `true` or `false`.
+                /// It applies this closure to each element, and if any of them return `true`,
+                /// then so does `any()`. If they all return `false`, it returns `false`.
+                ///
+                /// `any()` is short-circuiting; in other words, it will stop processing as
+                /// soon as it finds a `true`, given that no matter what else happens,
+                /// the result will also be `true`.
+                #[inline(always)]
+                pub fn any(self, mut f: impl FnMut(T) -> bool) -> bool {
+                    $(
+                        f(self.$field)
+                    )||*
                 }
             }
 
-            /// Tests if every element matches a predicate.
-            ///
-            /// `all()` takes a closure that returns `true` or `false`.
-            /// It applies this closure to each element, and if they all return `true`,
-            /// then so does `all()`. If any of them return `false`, it returns `false`.
-            ///
-            /// `all()` is short-circuiting; in other words, it will stop processing as
-            /// soon as it finds a `false`, given that no matter what else happens,
-            /// the result will also be `false`.
-            #[inline(always)]
-            pub fn all(self, mut f: impl ::core::ops::FnMut(T) -> bool) -> bool {
-                $(
-                    f(self.$field)
-                )&&*
+            impl<T, U> $name<(T, U)> {
+                /// Unzips each field's tuple into two [`
+                #[doc = stringify!($name)]
+                /// `].
+                #[inline(always)]
+                pub fn unzip(self) -> ($name<T>, $name<U>) {
+                    (
+                        $name {
+                            $(
+                                $field: self.$field.0,
+                            )*
+                        },
+                        $name {
+                            $(
+                                $field: self.$field.1,
+                            )*
+                        }
+                    )
+                }
             }
 
-            /// Tests if any element matches a predicate.
-            ///
-            /// `any()` takes a closure that returns `true` or `false`.
-            /// It applies this closure to each element, and if any of them return `true`,
-            /// then so does `any()`. If they all return `false`, it returns `false`.
-            ///
-            /// `any()` is short-circuiting; in other words, it will stop processing as
-            /// soon as it finds a `true`, given that no matter what else happens,
-            /// the result will also be `true`.
-            #[inline(always)]
-            pub fn any(self, mut f: impl ::core::ops::FnMut(T) -> bool) -> bool {
-                $(
-                    f(self.$field)
-                )||*
+            impl<T> $name<Option<T>> {
+                /// Transposes a
+                #[doc=concat!("`", stringify!($name), "<Option<T>>`")]
+                /// into a
+                #[doc=concat!("`Option<", stringify!($name), "<T>>`.")]
+                #[inline(always)]
+                pub fn transpose(self) -> Option<$name<T>> {
+                    Option::Some(
+                        $name {
+                            $(
+                                $field: self.$field?,
+                            )*
+                        }
+                    )
+                }
             }
-        }
 
-        impl<T, U> $name<(T, U)> {
-            /// Unzips each field's tuple into two [`
-            #[doc = stringify!($name)]
-            /// `].
-            #[inline(always)]
-            pub fn unzip(self) -> ($name<T>, $name<U>) {
-                (
-                    $name {
-                        $(
-                            $field: self.$field.0,
-                        )*
-                    },
-                    $name {
-                        $(
-                            $field: self.$field.1,
-                        )*
-                    }
-                )
-            }
-        }
 
-        impl<T> $name<::core::option::Option<T>> {
-            /// Transposes a
-            #[doc=concat!("`", stringify!($name), "<Option<T>>`")]
-            /// into a
-            #[doc=concat!("`Option<", stringify!($name), "<T>>`.")]
-            #[inline(always)]
-            pub fn transpose(self) -> ::core::option::Option<$name<T>> {
-                ::core::option::Option::Some(
-                    $name {
-                        $(
-                            $field: self.$field?,
-                        )*
-                    }
-                )
+            impl<T> From<[T; <$name<()>>::LEN]> for $name<T> {
+                #[inline(always)]
+                fn from(array: [T; <$name<()>>::LEN]) -> Self {
+                    let [ $($field),* ] = array;
+                    Self { $($field),* }
+                }
             }
-        }
+
+            impl<T> From<$name<T>> for [T; <$name<()>>::LEN] {
+                #[inline(always)]
+                fn from(this: $name<T>) -> Self {
+                    [ $( this.$field ),* ]
+                }
+            }
+
+        };
 
         #[cfg( $($try)* )]
         $crate::__internal_array_struct!(@impl_try struct $name { $($field),* } );
 
         #[cfg( $($try_res)* )]
         $crate::__internal_array_struct!(@impl_try_res struct $name { $($field),* } );
-
-        impl<T> ::core::convert::From<[T; <$name<()>>::LEN]> for $name<T> {
-            #[inline(always)]
-            fn from(array: [T; <$name<()>>::LEN]) -> Self {
-                let [ $($field),* ] = array;
-                Self { $($field),* }
-            }
-        }
-
-        impl<T> ::core::convert::From<$name<T>> for [T; <$name<()>>::LEN] {
-            #[inline(always)]
-            fn from(this: $name<T>) -> Self {
-                [ $( this.$field ),* ]
-            }
-        }
     };
 
     /* -------------------------------------------------------------------------- */
