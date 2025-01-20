@@ -1,0 +1,14 @@
+[package]
+name = "no_std"
+edition = "2021"
+
+publish = false
+
+
+[features]
+std = []
+try = []
+
+
+[dependencies]
+array-struct = { path = ".." }

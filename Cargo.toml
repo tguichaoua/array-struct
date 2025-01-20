@@ -1,0 +1,16 @@
+[package]
+name = "array-struct"
+version = "0.1.0"
+edition = "2021"
+
+authors = ["Tristan Guichaoua <tguichaoua.dev@gmail.com>"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/tguichaoua/array-struct"
+
+description = "Macro that generates array-like structs"
+keywords = ["array", "struct", "array-like", "map", "struct-map"]
+categories = ["data-structures", "no-std::no-alloc"]
+
+
+[workspace]
+members = ["no_std"]
